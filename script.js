@@ -7,9 +7,8 @@ const CATEGORIES = [
 ];
 
 // --- APP STATE ---
-// Load puzzles from storage, or start with an empty list []
-let savedPuzzlesJSON = localStorage.getItem('connections_puzzles');
-let puzzles = JSON.parse(savedPuzzlesJSON || '[]');
+let puzzles = [];
+let isLoadingPuzzles = false;
 
 // Prepare the blank "Builder" data
 let builderData = [];
@@ -27,6 +26,7 @@ for (let i = 0; i < CATEGORIES.length; i++) {
 let gameState = null;
 let puzzleIndexToDelete = null;
 let puzzleIndexToEdit = null;
+const SHARED_PUZZLE_PARAM = 'puzzle';
 
 // --- UTILITY FUNCTIONS ---
 
@@ -47,6 +47,10 @@ function showToast(msg) {
   setTimeout(function() {
     toastElement.classList.remove('show');
   }, 3000);
+}
+
+function setPuzzleLoadingState(isLoading) {
+  isLoadingPuzzles = isLoading;
 }
 
 // --- NAVIGATION ---
@@ -74,8 +78,13 @@ function renderGallery() {
   const solvedListJSON = localStorage.getItem('solved_puzzle_ids');
   const solvedList = JSON.parse(solvedListJSON || '[]');
 
+  if (isLoadingPuzzles) {
+    container.innerHTML = `<div class="gallery-empty">Loading puzzles...</div>`;
+    return;
+  }
+
   if (puzzles.length === 0) {
-    container.innerHTML = `<div class="gallery-empty">No puzzles found. Create one!</div>`;
+    container.innerHTML = `<div class="gallery-empty">No puzzles found yet. Create one!</div>`;
     return;
   }
 
@@ -115,10 +124,18 @@ function deletePuzzle(index) {
 
 function executeDelete() {
     if (puzzleIndexToDelete !== null) {
-        puzzles.splice(puzzleIndexToDelete, 1);
-        localStorage.setItem('connections_puzzles', JSON.stringify(puzzles));
-        renderGallery();
-        closeConfirmWindow();
+        const puzzleId = puzzles[puzzleIndexToDelete] && puzzles[puzzleIndexToDelete].id;
+        deletePuzzleFromRemote(puzzleId)
+          .then(function() {
+            puzzles.splice(puzzleIndexToDelete, 1);
+            renderGallery();
+            closeConfirmWindow();
+            showToast("Puzzle deleted!");
+          })
+          .catch(function(error) {
+            console.error(error);
+            showToast("Couldn't delete puzzle.");
+          });
     }
 }
 
@@ -266,31 +283,94 @@ function savePuzzle() {
     return; 
   }
 
+  const existingPuzzle = puzzleIndexToEdit !== null ? puzzles[puzzleIndexToEdit] : null;
   const puzzleData = {
-    title: titleField.value.trim(), 
-    author: authorField.value.trim(), 
-    categories: JSON.parse(JSON.stringify(builderData)) // Copy the data
+    id: existingPuzzle ? existingPuzzle.id : `puz_${Date.now()}`,
+    title: titleField.value.trim(),
+    author: authorField.value.trim(),
+    categories: JSON.parse(JSON.stringify(builderData)),
+    createdAt: existingPuzzle && existingPuzzle.createdAt ? existingPuzzle.createdAt : new Date().toISOString()
   };
 
-  if (puzzleIndexToEdit !== null) {
-    const existingPuzzle = puzzles[puzzleIndexToEdit];
-    puzzles[puzzleIndexToEdit] = {
-      ...existingPuzzle,
-      ...puzzleData
-    };
-  } else {
-    puzzles.push({
-      id: 'puz_' + Date.now(),
-      ...puzzleData
+  upsertPuzzleToRemote(puzzleData)
+    .then(function(savedPuzzle) {
+      if (puzzleIndexToEdit !== null) {
+        puzzles[puzzleIndexToEdit] = savedPuzzle;
+      } else {
+        puzzles.unshift(savedPuzzle);
+      }
+
+      const successMessage = puzzleIndexToEdit !== null ? 'Puzzle updated!' : 'Puzzle saved!';
+      resetBuilderForm();
+      renderBuilder();
+      showToast(successMessage);
+      switchTab('browse');
+    })
+    .catch(function(error) {
+      console.error(error);
+      showToast("Couldn't save puzzle online.");
     });
+}
+
+async function sharePuzzle(index) {
+  const puzzle = puzzles[index];
+  if (!puzzle) return;
+
+  try {
+    const shareUrl = buildSharedPuzzleUrl(puzzle);
+    if (navigator.share) {
+      await navigator.share({
+        title: puzzle.title || 'Connections Puzzle',
+        text: `Play this puzzle: ${puzzle.title || 'Unnamed'}`,
+        url: shareUrl
+      });
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast("Share link copied!");
+    } else {
+      window.prompt("Copy this puzzle link:", shareUrl);
+    }
+  } catch (error) {
+    console.error(error);
+    showToast("Couldn't create a share link.");
+  }
+}
+
+async function fetchRemotePuzzles() {
+  const response = await fetch('/.netlify/functions/puzzles');
+  if (!response.ok) {
+    throw new Error('Failed to load puzzles.');
   }
 
-  localStorage.setItem('connections_puzzles', JSON.stringify(puzzles));
-  const successMessage = puzzleIndexToEdit !== null ? 'Puzzle updated!' : 'Puzzle saved!';
-  resetBuilderForm();
-  renderBuilder();
-  showToast(successMessage);
-  switchTab('browse');
+  const data = await response.json();
+  puzzles = Array.isArray(data.puzzles) ? data.puzzles : [];
+}
+
+async function upsertPuzzleToRemote(puzzle) {
+  const response = await fetch('/.netlify/functions/puzzles', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(puzzle)
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to save puzzle.');
+  }
+
+  const data = await response.json();
+  return data.puzzle;
+}
+
+async function deletePuzzleFromRemote(puzzleId) {
+  const response = await fetch(`/.netlify/functions/puzzles?id=${encodeURIComponent(puzzleId)}`, {
+    method: 'DELETE'
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete puzzle.');
+  }
 }
 
 // --- GAMEPLAY LOGIC ---
@@ -384,13 +464,15 @@ async function importFromSwellgarfo() {
       return;
     }
 
-    puzzles.push({
+    const newPuzzle = {
       id: 'puz_' + Date.now(),
       title: importedPuzzle.title || "Unnamed",
       author: importedPuzzle.author || "Unkown",
-      categories: importedPuzzle.categories
-    });
-    localStorage.setItem('connections_puzzles', JSON.stringify(puzzles));
+      categories: importedPuzzle.categories,
+      createdAt: new Date().toISOString()
+    };
+    const savedPuzzle = await upsertPuzzleToRemote(newPuzzle);
+    puzzles.unshift(savedPuzzle);
     input.value = '';
     showToast("Puzzle Imported!");
     renderGallery();
@@ -551,6 +633,106 @@ function createImportedPuzzle(title, categories, author) {
       words: categories[index].words
     }))
   };
+}
+
+function buildSharedPuzzleUrl(puzzle) {
+  const shareablePuzzle = {
+    id: puzzle.id || '',
+    title: puzzle.title || 'Unnamed',
+    author: puzzle.author || 'Unkown',
+    categories: (puzzle.categories || []).map(category => ({
+      name: category.name || '',
+      words: Array.isArray(category.words) ? category.words.slice(0, 4) : []
+    }))
+  };
+
+  const encodedPuzzle = encodePuzzleForUrl(shareablePuzzle);
+  const url = new URL(window.location.href);
+  url.searchParams.set(SHARED_PUZZLE_PARAM, encodedPuzzle);
+  return url.toString();
+}
+
+function encodePuzzleForUrl(puzzle) {
+  const json = JSON.stringify(puzzle);
+  return btoa(unescape(encodeURIComponent(json)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+function decodePuzzleFromUrl(encodedPuzzle) {
+  const base64 = encodedPuzzle.replace(/-/g, '+').replace(/_/g, '/');
+  const paddedBase64 = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+  const json = decodeURIComponent(escape(atob(paddedBase64)));
+  return JSON.parse(json);
+}
+
+function loadSharedPuzzleFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const encodedPuzzle = params.get(SHARED_PUZZLE_PARAM);
+  if (!encodedPuzzle) return;
+
+  try {
+    const normalizedPuzzle = normalizeSharedPuzzle(decodePuzzleFromUrl(encodedPuzzle));
+    if (!normalizedPuzzle) {
+      showToast("Shared puzzle link is invalid.");
+      return;
+    }
+
+    const existingIndex = puzzles.findIndex(puzzle => puzzle.id === normalizedPuzzle.id);
+    if (existingIndex >= 0) {
+      puzzles[existingIndex] = normalizedPuzzle;
+    } else {
+      puzzles.unshift(normalizedPuzzle);
+    }
+
+    renderGallery();
+    showToast("Shared puzzle loaded!");
+    playPuzzle(existingIndex >= 0 ? existingIndex : 0);
+  } catch (error) {
+    console.error(error);
+    showToast("Shared puzzle link is invalid.");
+  }
+}
+
+function normalizeSharedPuzzle(rawPuzzle) {
+  if (!rawPuzzle || !Array.isArray(rawPuzzle.categories) || rawPuzzle.categories.length < 4) {
+    return null;
+  }
+
+  const categories = rawPuzzle.categories.slice(0, 4).map((category, index) => ({
+    ...CATEGORIES[index],
+    name: typeof category.name === 'string' && category.name.trim() ? category.name.trim() : `Category ${index + 1}`,
+    words: normalizeImportedWords(category.words).slice(0, 4)
+  }));
+
+  if (!categories.every(category => category.words.length === 4)) {
+    return null;
+  }
+
+  const identitySource = JSON.stringify({
+    title: rawPuzzle.title || 'Unnamed',
+    author: rawPuzzle.author || 'Unkown',
+    categories: categories.map(category => ({
+      name: category.name,
+      words: category.words
+    }))
+  });
+
+  return {
+    id: rawPuzzle.id || `shared_${simpleHash(identitySource)}`,
+    title: firstString(rawPuzzle.title) || 'Unnamed',
+    author: firstString(rawPuzzle.author) || 'Unkown',
+    categories
+  };
+}
+
+function simpleHash(text) {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36);
 }
 
 function extractPuzzleFromNextData(nextData) {
@@ -983,5 +1165,20 @@ function restartCurrentPuzzle() {
 
 function exitGame() { switchTab('browse'); }
 
-// Run the gallery render on start
-renderGallery();
+async function initializeApp() {
+  setPuzzleLoadingState(true);
+  renderGallery();
+
+  try {
+    await fetchRemotePuzzles();
+  } catch (error) {
+    console.error(error);
+    showToast("Couldn't load online puzzles.");
+  } finally {
+    setPuzzleLoadingState(false);
+    renderGallery();
+    loadSharedPuzzleFromUrl();
+  }
+}
+
+initializeApp();
