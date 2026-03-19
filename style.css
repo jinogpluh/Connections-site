@@ -43,6 +43,47 @@ header span {
   text-transform: uppercase;
 }
 
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--rule);
+  background: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.connection-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.connection-status.online {
+  border-color: #9ccf8c;
+  background: #f3fff0;
+  color: #2f7d32;
+}
+
+.connection-status.connecting {
+  border-color: #d8c78b;
+  background: #fff9eb;
+  color: #9a6d11;
+}
+
+.connection-status.offline {
+  border-color: #e0b2b2;
+  background: #fff4f4;
+  color: #b42318;
+}
+
 /* Modal Overlay Styles (Required for your Popups) */
 .modal-overlay {
   position: fixed;

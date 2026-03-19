@@ -27,6 +27,7 @@ let gameState = null;
 let puzzleIndexToDelete = null;
 let puzzleIndexToEdit = null;
 const SHARED_PUZZLE_PARAM = 'puzzle';
+let connectionStatus = 'connecting';
 
 // --- UTILITY FUNCTIONS ---
 
@@ -51,6 +52,19 @@ function showToast(msg) {
 
 function setPuzzleLoadingState(isLoading) {
   isLoadingPuzzles = isLoading;
+}
+
+function setConnectionStatus(status) {
+  connectionStatus = status;
+
+  const statusElement = document.getElementById('connection-status');
+  if (!statusElement) return;
+
+  statusElement.className = `connection-status ${status}`;
+  statusElement.textContent =
+    status === 'online' ? 'Online' :
+    status === 'offline' ? 'Offline' :
+    'Connecting';
 }
 
 // --- NAVIGATION ---
@@ -337,17 +351,19 @@ async function sharePuzzle(index) {
 }
 
 async function fetchRemotePuzzles() {
-  const response = await fetch('/.netlify/functions/puzzles');
+  const response = await fetch('/api/puzzles');
   if (!response.ok) {
+    setConnectionStatus('offline');
     throw new Error('Failed to load puzzles.');
   }
 
   const data = await response.json();
   puzzles = Array.isArray(data.puzzles) ? data.puzzles : [];
+  setConnectionStatus('online');
 }
 
 async function upsertPuzzleToRemote(puzzle) {
-  const response = await fetch('/.netlify/functions/puzzles', {
+  const response = await fetch('/api/puzzles', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -356,21 +372,26 @@ async function upsertPuzzleToRemote(puzzle) {
   });
 
   if (!response.ok) {
+    setConnectionStatus('offline');
     throw new Error('Failed to save puzzle.');
   }
 
   const data = await response.json();
+  setConnectionStatus('online');
   return data.puzzle;
 }
 
 async function deletePuzzleFromRemote(puzzleId) {
-  const response = await fetch(`/.netlify/functions/puzzles?id=${encodeURIComponent(puzzleId)}`, {
+  const response = await fetch(`/api/puzzles?id=${encodeURIComponent(puzzleId)}`, {
     method: 'DELETE'
   });
 
   if (!response.ok) {
+    setConnectionStatus('offline');
     throw new Error('Failed to delete puzzle.');
   }
+
+  setConnectionStatus('online');
 }
 
 // --- GAMEPLAY LOGIC ---
@@ -1167,12 +1188,14 @@ function exitGame() { switchTab('browse'); }
 
 async function initializeApp() {
   setPuzzleLoadingState(true);
+  setConnectionStatus('connecting');
   renderGallery();
 
   try {
     await fetchRemotePuzzles();
   } catch (error) {
     console.error(error);
+    setConnectionStatus('offline');
     showToast("Couldn't load online puzzles.");
   } finally {
     setPuzzleLoadingState(false);
