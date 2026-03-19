@@ -375,6 +375,7 @@ async function importFromSwellgarfo() {
   }
 
   try {
+    setImportButtonState(true);
     const html = await fetchSwellgarfoHtml(normalizedUrl);
     const importedPuzzle = parseSwellgarfoHtml(html);
 
@@ -385,8 +386,8 @@ async function importFromSwellgarfo() {
 
     puzzles.push({
       id: 'puz_' + Date.now(),
-      title: importedPuzzle.title,
-      author: importedPuzzle.author || "Swellgarfo Import",
+      title: importedPuzzle.title || "Unnamed",
+      author: importedPuzzle.author || "Unkown",
       categories: importedPuzzle.categories
     });
     localStorage.setItem('connections_puzzles', JSON.stringify(puzzles));
@@ -400,7 +401,19 @@ async function importFromSwellgarfo() {
       : "Import failed. The site or proxy may be blocking the request.";
     showToast(message);
     console.error(error);
+  } finally {
+    setImportButtonState(false);
   }
+}
+
+function setImportButtonState(isImporting) {
+  const importButton = document.getElementById('import-btn');
+  if (!importButton) return;
+
+  importButton.disabled = isImporting;
+  importButton.textContent = isImporting ? 'Importing...' : 'Auto-Import';
+  importButton.style.opacity = isImporting ? '0.7' : '1';
+  importButton.style.cursor = isImporting ? 'wait' : 'pointer';
 }
 
 function normalizeSwellgarfoUrl(rawUrl) {
@@ -424,27 +437,25 @@ async function fetchSwellgarfoHtml(url) {
       parse: async response => response.text()
     },
     {
+      label: 'CodeTabs',
+      buildUrl: targetUrl => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(targetUrl)}`,
+      parse: async response => response.text()
+    },
+    {
       label: 'AllOrigins get',
       buildUrl: targetUrl => `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
       parse: async response => {
         const data = await response.json();
         return data.contents || '';
       }
-    },
-    {
-      label: 'CodeTabs',
-      buildUrl: targetUrl => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(targetUrl)}`,
-      parse: async response => response.text()
     }
   ];
-
-  let lastError = null;
 
   for (let i = 0; i < proxyAttempts.length; i++) {
     const proxy = proxyAttempts[i];
 
     try {
-      const response = await fetch(proxy.buildUrl(url));
+      const response = await fetchWithTimeout(proxy.buildUrl(url), 4500);
       if (!response.ok) {
         throw new Error(`${proxy.label} returned ${response.status}`);
       }
@@ -455,12 +466,21 @@ async function fetchSwellgarfoHtml(url) {
       }
 
       throw new Error(`${proxy.label} returned an empty page`);
-    } catch (error) {
-      lastError = error;
-    }
+    } catch (error) {}
   }
 
   throw new Error("Import failed. Swellgarfo or the proxy blocked the request.");
+}
+
+async function fetchWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function parseSwellgarfoHtml(html) {
@@ -474,7 +494,7 @@ function parseSwellgarfoHtml(html) {
     const nextDataPuzzle = extractPuzzleFromNextData(nextData);
     if (nextDataPuzzle) {
       return createImportedPuzzle(
-        nextDataPuzzle.title || title,
+        nextDataPuzzle.title,
         nextDataPuzzle.categories,
         nextDataPuzzle.author
       );
@@ -509,16 +529,22 @@ function parseSwellgarfoHtml(html) {
 function extractImportedTitle(doc) {
   const metaTitle = doc.querySelector('meta[property="og:title"]');
   const rawTitle = (metaTitle && metaTitle.content) || doc.title || "Imported Game";
-  return rawTitle
+  const cleanedTitle = rawTitle
     .replace(/\s*-\s*Swellgarfo.*$/i, '')
     .replace(/\s*\|\s*Swellgarfo.*$/i, '')
-    .trim() || "Imported Game";
+    .trim();
+
+  if (!cleanedTitle || /^Connections\s+[–-]\s+Puzzle\s+-/i.test(cleanedTitle)) {
+    return 'Unnamed';
+  }
+
+  return cleanedTitle;
 }
 
 function createImportedPuzzle(title, categories, author) {
   return {
-    title,
-    author: author || '',
+    title: title || 'Unnamed',
+    author: author || 'Unkown',
     categories: CATEGORIES.map((cat, index) => ({
       ...cat,
       name: categories[index].name || `Category ${index + 1}`,
@@ -536,8 +562,8 @@ function extractPuzzleFromNextData(nextData) {
 
   const metadata = pageProps.puzzleMetadata || {};
   return {
-    title: firstString(metadata.title, pageProps.title),
-    author: firstString(metadata.author, pageProps.author),
+    title: firstString(metadata.title, pageProps.title) || 'Unnamed',
+    author: firstString(metadata.author, pageProps.author) || 'Unkown',
     categories: answers
   };
 }
