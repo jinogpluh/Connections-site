@@ -3,12 +3,12 @@
   --ink: #1A1714;
   --ink-muted: #6B645A;
   --rule: #D4CCB8;
-  --c1: #e1ba2c;
-  --c2: #64a755;
-  --c3: #6BAED6;
-  --c4: #871ba7;
+  --c1: #F9DF6D;
+  --c2: #A0C35A;
+  --c3: #B0C4F0;
+  --c4: #ba81c5;
   --radius: 6px;
-  --shadow: 0 2px 12px rgba(26,23,20,0.08);
+  --shadow: 0 2px 12px rgba(6, 6, 6, 0.08);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,7 +16,7 @@
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: 'DM Mono', monospace;
+  font-family: sans-serif;
   min-height: 100vh;
   padding: 0 16px 80px;
 }
@@ -41,6 +41,84 @@ header span {
   color: var(--ink-muted);
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+/* Modal Overlay Styles (Required for your Popups) */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(26, 23, 20, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px); /* Blurs the game background slightly */
+}
+
+.modal-card {
+  background: var(--bg);
+  padding: 32px;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  animation: modalPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.modal-card h2 {
+  font-family: 'DM Serif Display', serif;
+  margin-bottom: 10px;
+}
+
+/* Animation for the Win Modal appearing */
+.modal-card {
+  animation: modalPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Confetti particles */
+.confetti {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  background-color: #f00;
+  z-index: 4000;
+  top: -10px;
+  animation: fall linear forwards;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(100vh) rotate(720deg);
+  }
+}
+
+#msg {
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  height: 20px; /* Prevents the layout from jumping when text appears */
+}
+
+.one-away {
+  color: #b06a10;
+  animation: messagePop 0.3s ease-out;
+}
+
+@keyframes messagePop {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .tabs {
@@ -95,10 +173,63 @@ header span {
   transition: transform 0.15s, box-shadow 0.15s;
   box-shadow: var(--shadow);
 }
+/* Styling for the completed puzzle cards in the browser menu */
+.puzzle-card.solved-state {
+    border: 1.5px solid #4caf50; /* Green border */
+    background-color: #f0fff4;    /* Light green tint */
+    opacity: 0.9;
+}
+
+.puzzle-card.solved-state h3 {
+    color: #2e7d32;
+}
 
 .puzzle-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(26,23,20,0.12); }
 .puzzle-card h3 { font-family: 'DM Serif Display', serif; font-size: 1.15rem; margin-bottom: 6px; }
 .puzzle-card p { font-size: 0.72rem; color: var(--ink-muted); margin-bottom: 14px; letter-spacing: 0.04em; }
+.puzzle-card-footer {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.puzzle-action {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.puzzle-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(26, 23, 20, 0.08);
+}
+
+.puzzle-action.primary {
+  grid-column: 1 / -1;
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.puzzle-action.secondary {
+  color: var(--ink-muted);
+}
+
+.puzzle-action.danger {
+  border-color: #e7b7b7;
+  color: #b42318;
+  background: #fff6f6;
+}
 
 .builder-section { margin-bottom: 40px; }
 .builder-section h2 { font-family: 'DM Serif Display', serif; font-size: 1.3rem; margin-bottom: 4px; }
@@ -128,10 +259,56 @@ header span {
 #game-view { max-width: 600px; margin: 0 auto; }
 .mistakes-row { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 20px; text-transform: uppercase; font-size: 0.72rem; }
 
-.solved-cat { padding: 14px 20px; border-radius: var(--radius); margin-bottom: 8px; text-align: center; }
+.solved-cat {
+  padding: 14px 20px;
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.solved-cat.reveal {
+  /* Only animate the category that was just solved */
+  animation: solveReveal 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes solveReveal {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
 .word-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
-.word-tile { aspect-ratio: 1 / 0.65; display: flex; align-items: center; justify-content: center; border: 2px solid var(--rule); border-radius: var(--radius); background: #fff; cursor: pointer; font-size: 0.75rem; text-align: center; padding: 4px; }
-.word-tile.selected { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.word-tile {
+  aspect-ratio: 1 / 0.65;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--rule);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 4px;
+  
+  /* CRITICAL: Use transition, NOT animation. 
+     This makes the color swap smooth without 're-flashing' the card. */
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+  
+  /* Prevents text from highlighting when you click fast */
+  user-select: none; 
+}
+
+/* Add a tiny "squish" effect when you actually press the mouse down */
+.word-tile:active {
+  transform: scale(0.96);
+}
+
+.word-tile.selected {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
 
 .btn-game { padding: 10px 22px; border-radius: var(--radius); font-family: 'DM Mono', monospace; cursor: pointer; border: 1.5px solid; text-transform: uppercase; font-size: 0.7rem; }
 .btn-game.submit { background: var(--ink); color: var(--bg); }
