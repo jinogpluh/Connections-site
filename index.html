@@ -23,7 +23,7 @@
   <div class="modal-card">
     <h2 style="color: var(--ink);">Game Over</h2>
     <p>Better luck next time! You've used up all your mistakes.</p>
-    <div class="modal-actions" style="display: flex; gap: 10px; justify-content: center;">
+    <div class="modal-actions" style="display: flex; gap: 10px; justify-content: center; margin-top: 24px;">
       <button class="btn-secondary" onclick="closeLossModal()" style="background:#ccc; color:var(--ink); border:none; padding:12px 24px; border-radius:var(--radius); cursor:pointer;">Back to Menu</button>
       <button class="btn-primary" onclick="restartCurrentPuzzle()" style="background:var(--ink); color:var(--bg); border:none; padding:12px 24px; border-radius:var(--radius); cursor:pointer;">Try Again</button>
     </div>
@@ -48,6 +48,7 @@
 </div>
 
 <header>
+  <div id="solved-progress" class="solved-progress">Solved 0 / 0</div>
   <h1>Connections List</h1>
   <div id="connection-status" class="connection-status connecting">Connecting</div>
 </header>

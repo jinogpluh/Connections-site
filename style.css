@@ -38,6 +38,22 @@ header h1 {
   text-align: center;
 }
 
+.solved-progress {
+  grid-column: 1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--rule);
+  background: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
 header span {
   font-size: 0.72rem;
   color: var(--ink-muted);
@@ -149,11 +165,16 @@ header span {
 }
 
 #msg {
+  text-align: center;
+  margin: 0 0 14px;
   font-weight: bold;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  font-size: 0.8rem;
-  height: 20px; /* Prevents the layout from jumping when text appears */
+  font-family: 'DM Mono', monospace;
+  font-size: 1rem;
+  line-height: 1.3;
+  min-height: 26px; /* Prevents the layout from jumping when text appears */
+  color: var(--ink);
 }
 
 .one-away {
@@ -375,6 +396,7 @@ header span {
   }
 
   header h1,
+  .solved-progress,
   .connection-status {
     grid-column: 1;
     justify-self: center;
@@ -475,7 +497,6 @@ header span {
 
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 20px; border-radius: 4px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
 .toast.show { opacity: 1; }
-.one-away { color: #b06a10; font-weight: bold; }
 .back-btn { background: none; border: none; cursor: pointer; margin-bottom: 20px; color: var(--ink-muted); text-transform: uppercase; font-size: 0.7rem; }
 
 @media (max-width: 720px) {
@@ -487,6 +508,12 @@ header span {
     gap: 10px;
     margin-bottom: 20px;
     font-size: 0.88rem;
+  }
+
+  #msg {
+    font-size: 0.88rem;
+    min-height: 24px;
+    margin-bottom: 12px;
   }
 
   .word-grid {

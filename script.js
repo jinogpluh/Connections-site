@@ -69,6 +69,19 @@ function setConnectionStatus(status) {
     'Connecting';
 }
 
+function getSolvedPuzzleIds() {
+  return JSON.parse(localStorage.getItem('solved_puzzle_ids') || '[]');
+}
+
+function updateSolvedProgress() {
+  const progressElement = document.getElementById('solved-progress');
+  if (!progressElement) return;
+
+  const solvedIds = getSolvedPuzzleIds();
+  const solvedCount = puzzles.filter(puzzle => solvedIds.includes(puzzle.id)).length;
+  progressElement.textContent = `Solved ${solvedCount} / ${puzzles.length}`;
+}
+
 // --- NAVIGATION ---
 function switchTab(tabName) {
   const browseToolbar = document.getElementById('browse-toolbar');
@@ -124,8 +137,8 @@ function getSortedPuzzleEntries() {
 
 function renderGallery() {
   const container = document.getElementById('gallery-container');
-  const solvedListJSON = localStorage.getItem('solved_puzzle_ids');
-  const solvedList = JSON.parse(solvedListJSON || '[]');
+  const solvedList = getSolvedPuzzleIds();
+  updateSolvedProgress();
 
   if (isLoadingPuzzles) {
     container.innerHTML = `<div class="gallery-empty">Loading puzzles...</div>`;
@@ -499,13 +512,13 @@ function renderGame() {
 
   // FIX: Use a stable structure. We wrap the tiles and solved categories separately.
   container.innerHTML = `
+    <div id="msg">${s.feedbackKind === 'one-away' ? '<span class="one-away">One away...</span>' : esc(s.feedbackMessage || '')}</div>
     <div class="mistakes-row">Mistakes: ${'●'.repeat(4 - s.mistakes)}${'○'.repeat(s.mistakes)}</div>
     <div id="solved-rows-container">${solvedHTML}</div> 
     <div class="word-grid">${tilesHTML}</div>
     <div class="game-actions" style="text-align:center; margin-top:20px;">
         <button class="btn-game submit" onclick="submitGuess()" ${s.isGuessLocked ? 'disabled' : ''}>${s.isGuessLocked ? 'Try Again...' : 'Submit Guess'}</button>
     </div>
-    <div id="msg" style="text-align:center; margin-top:10px; min-height:20px;">${s.feedbackKind === 'one-away' ? '<span class="one-away">One away...</span>' : esc(s.feedbackMessage || '')}</div>
   `;
 }
 
@@ -1153,11 +1166,12 @@ function fireConfetti() {
 
 function handleWin(puzzleId) {
   // 1. Mark as solved in LocalStorage
-  let solvedList = JSON.parse(localStorage.getItem('solved_puzzle_ids') || '[]');
+  let solvedList = getSolvedPuzzleIds();
   if (!solvedList.includes(puzzleId)) {
     solvedList.push(puzzleId);
     localStorage.setItem('solved_puzzle_ids', JSON.stringify(solvedList));
   }
+  updateSolvedProgress();
 
   // 2. Trigger the animations!
   fireConfetti();
