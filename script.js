@@ -189,11 +189,13 @@ function updateBuilderUI() {
   const heading = document.getElementById('builder-heading');
   const saveButton = document.getElementById('save-puzzle-btn');
   const cancelButton = document.getElementById('cancel-edit-btn');
+  const importSection = document.getElementById('builder-import-section');
   const isEditing = puzzleIndexToEdit !== null;
 
   if (heading) heading.textContent = isEditing ? 'Edit Puzzle' : 'New Puzzle';
   if (saveButton) saveButton.textContent = isEditing ? 'Update Puzzle' : 'Save Puzzle';
   if (cancelButton) cancelButton.style.display = isEditing ? 'inline-block' : 'none';
+  if (importSection) importSection.style.display = isEditing ? 'none' : 'flex';
 }
 
 function editPuzzle(index) {
