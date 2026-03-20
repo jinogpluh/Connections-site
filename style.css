@@ -261,10 +261,16 @@ header span {
   letter-spacing: 0.06em;
 }
 
+#gallery-container {
+  max-width: 1420px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
 .puzzle-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
 }
 
 .puzzle-card {
@@ -331,12 +337,39 @@ header span {
 
 .puzzle-action.primary {
   grid-column: 1 / -1;
-  background: var(--ink);
-  border-color: var(--ink);
+  background: #4a443d;
+  border-color: #4a443d;
   color: #fff;
   min-height: 38px;
   padding: 8px 14px;
   font-size: 0.68rem;
+}
+
+@media (max-width: 1240px) {
+  .puzzle-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 920px) {
+  #gallery-container {
+    padding: 0 8px;
+  }
+
+  .puzzle-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+}
+
+@media (max-width: 620px) {
+  #gallery-container {
+    padding: 0;
+  }
+
+  .puzzle-cards {
+    grid-template-columns: 1fr;
+  }
 }
 
 .puzzle-action.secondary {
