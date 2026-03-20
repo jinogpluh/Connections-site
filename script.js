@@ -1041,10 +1041,7 @@ function submitGuess() {
     
     if (s.solved.length === 4) {
       setTimeout(() => {
-          // Trigger your win celebration here
-          if(typeof fireConfetti === 'function') fireConfetti(); 
-          const winModal = document.getElementById('win-modal');
-          if (winModal) winModal.style.display = 'flex';
+          handleWin(s.puzzle.id);
       }, 500);
     }
   } else {
