@@ -30,6 +30,9 @@ const SHARED_PUZZLE_PARAM = 'puzzle';
 let connectionStatus = 'connecting';
 let currentPuzzleSort = 'date_desc';
 const WRONG_GUESS_COOLDOWN_MS = 900;
+const OWNER_TOKEN_STORAGE_KEY = 'connections_owner_token';
+const ADMIN_KEY_STORAGE_KEY = 'connections_admin_key';
+let isAdminVerified = false;
 
 // --- UTILITY FUNCTIONS ---
 
@@ -67,6 +70,96 @@ function setConnectionStatus(status) {
     status === 'online' ? 'Online' :
     status === 'offline' ? 'Offline' :
     'Connecting';
+}
+
+function generateLocalToken() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+    return window.crypto.randomUUID();
+  }
+
+  return `owner_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+}
+
+function getOwnerToken() {
+  let token = localStorage.getItem(OWNER_TOKEN_STORAGE_KEY);
+  if (!token) {
+    token = generateLocalToken();
+    localStorage.setItem(OWNER_TOKEN_STORAGE_KEY, token);
+  }
+  return token;
+}
+
+function getAdminKey() {
+  return localStorage.getItem(ADMIN_KEY_STORAGE_KEY) || '';
+}
+
+function setAdminKey(adminKey) {
+  if (adminKey) {
+    localStorage.setItem(ADMIN_KEY_STORAGE_KEY, adminKey);
+  } else {
+    localStorage.removeItem(ADMIN_KEY_STORAGE_KEY);
+  }
+}
+
+function buildAuthHeaders() {
+  return {
+    'x-owner-token': getOwnerToken(),
+    'x-admin-key': getAdminKey()
+  };
+}
+
+function updateAccessStatus() {
+  document.body.classList.toggle('admin-mode', isAdminVerified);
+}
+
+function enableAdminAccess(adminKeyInput) {
+  const adminKey = (adminKeyInput || '').trim();
+  if (!adminKey) {
+    showToast('Enter an admin key first.');
+    return;
+  }
+
+  setAdminKey(adminKey);
+  isAdminVerified = false;
+  updateAccessStatus();
+  showToast('Admin access saved.');
+  initializeApp();
+}
+
+function disableAdminAccess() {
+  setAdminKey('');
+  isAdminVerified = false;
+  updateAccessStatus();
+  showToast('Admin access cleared.');
+  initializeApp();
+}
+
+function consumeAdminKeyFromUrl() {
+  const url = new URL(window.location.href);
+  const adminKeyFromUrl = url.searchParams.get('admin');
+  if (!adminKeyFromUrl) return;
+
+  setAdminKey(adminKeyFromUrl.trim());
+  isAdminVerified = false;
+  url.searchParams.delete('admin');
+  window.history.replaceState({}, '', url.toString());
+}
+
+function handleAdminHotkeys(event) {
+  const isAdminShortcut = event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'a';
+  const isClearShortcut = event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'x';
+
+  if (isAdminShortcut) {
+    event.preventDefault();
+    const enteredKey = window.prompt('Enter admin key');
+    if (enteredKey === null) return;
+    enableAdminAccess(enteredKey);
+  }
+
+  if (isClearShortcut) {
+    event.preventDefault();
+    disableAdminAccess();
+  }
 }
 
 function getSolvedPuzzleIds() {
@@ -158,14 +251,21 @@ function renderGallery() {
     const p = entry.puzzle;
     const originalIndex = entry.index;
     const isSolved = solvedList.includes(p.id);
+    const canManage = Boolean(p.canManage);
+    const managementHTML = canManage
+      ? `
+          <button class="puzzle-action danger" onclick="deletePuzzle(${originalIndex})">Delete</button>
+          <button class="puzzle-action secondary" onclick="editPuzzle(${originalIndex})">Edit</button>
+        `
+      : `<div class="manage-note">Only the creator or admin can edit</div>`;
     
     htmlResult += `
       <div class="puzzle-card ${isSolved ? 'solved-state' : ''}">
         <h3>${isSolved ? '✅ ' : ''}${esc(p.title)}</h3>
         <p>by ${esc(p.author || 'Anonymous')}</p>
+        ${!canManage ? managementHTML : ''}
         <div class="puzzle-card-footer">
-          <button class="puzzle-action danger" onclick="deletePuzzle(${originalIndex})">Delete</button>
-          <button class="puzzle-action secondary" onclick="editPuzzle(${originalIndex})">Edit</button>
+          ${canManage ? managementHTML : ''}
           <button class="puzzle-action primary" onclick="playPuzzle(${originalIndex})">
               ${isSolved ? 'Replay' : 'Play'}
           </button>
@@ -180,6 +280,11 @@ function renderGallery() {
 
 // --- DELETE LOGIC ---
 function deletePuzzle(index) {
+    const puzzle = puzzles[index];
+    if (!puzzle || !puzzle.canManage) {
+        showToast("Only the creator or admin can delete this puzzle.");
+        return;
+    }
     puzzleIndexToDelete = index;
     const modal = document.getElementById('confirm-Window');
     if (modal) {
@@ -199,7 +304,7 @@ function executeDelete() {
           })
           .catch(function(error) {
             console.error(error);
-            showToast("Couldn't delete puzzle.");
+            showToast(error && error.message ? error.message : "Couldn't delete puzzle.");
           });
     }
 }
@@ -252,6 +357,10 @@ function updateBuilderUI() {
 function editPuzzle(index) {
   const puzzle = puzzles[index];
   if (!puzzle) return;
+  if (!puzzle.canManage) {
+    showToast("Only the creator or admin can edit this puzzle.");
+    return;
+  }
 
   puzzleIndexToEdit = index;
   builderData = CATEGORIES.map((categoryTemplate, categoryIndex) => {
@@ -375,7 +484,7 @@ function savePuzzle() {
     })
     .catch(function(error) {
       console.error(error);
-      showToast("Couldn't save puzzle online.");
+      showToast(error && error.message ? error.message : "Couldn't save puzzle online.");
     });
 }
 
@@ -404,7 +513,9 @@ async function sharePuzzle(index) {
 }
 
 async function fetchRemotePuzzles() {
-  const response = await fetch('/api/puzzles');
+  const response = await fetch('/api/puzzles', {
+    headers: buildAuthHeaders()
+  });
   if (!response.ok) {
     setConnectionStatus('offline');
     throw new Error('Failed to load puzzles.');
@@ -412,21 +523,25 @@ async function fetchRemotePuzzles() {
 
   const data = await response.json();
   puzzles = Array.isArray(data.puzzles) ? data.puzzles : [];
+  isAdminVerified = Boolean(data.isAdmin);
   setConnectionStatus('online');
+  updateAccessStatus();
 }
 
 async function upsertPuzzleToRemote(puzzle) {
   const response = await fetch('/api/puzzles', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...buildAuthHeaders()
     },
     body: JSON.stringify(puzzle)
   });
 
   if (!response.ok) {
-    setConnectionStatus('offline');
-    throw new Error('Failed to save puzzle.');
+    const errorData = await response.json().catch(() => null);
+    if (response.status !== 403) setConnectionStatus('offline');
+    throw new Error((errorData && errorData.error) || 'Failed to save puzzle.');
   }
 
   const data = await response.json();
@@ -436,12 +551,14 @@ async function upsertPuzzleToRemote(puzzle) {
 
 async function deletePuzzleFromRemote(puzzleId) {
   const response = await fetch(`/api/puzzles?id=${encodeURIComponent(puzzleId)}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: buildAuthHeaders()
   });
 
   if (!response.ok) {
-    setConnectionStatus('offline');
-    throw new Error('Failed to delete puzzle.');
+    const errorData = await response.json().catch(() => null);
+    if (response.status !== 403) setConnectionStatus('offline');
+    throw new Error((errorData && errorData.error) || 'Failed to delete puzzle.');
   }
 
   setConnectionStatus('online');
@@ -1261,13 +1378,18 @@ function exitGame() { switchTab('browse'); }
 async function initializeApp() {
   setPuzzleLoadingState(true);
   setConnectionStatus('connecting');
+  consumeAdminKeyFromUrl();
+  updateAccessStatus();
+  getOwnerToken();
   renderGallery();
 
   try {
     await fetchRemotePuzzles();
   } catch (error) {
     console.error(error);
+    isAdminVerified = false;
     setConnectionStatus('offline');
+    updateAccessStatus();
     showToast("Couldn't load online puzzles.");
   } finally {
     setPuzzleLoadingState(false);
@@ -1276,4 +1398,5 @@ async function initializeApp() {
   }
 }
 
+window.addEventListener('keydown', handleAdminHotkeys);
 initializeApp();

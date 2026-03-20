@@ -290,6 +290,14 @@ header span {
 .puzzle-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(26,23,20,0.12); }
 .puzzle-card h3 { font-family: 'DM Serif Display', serif; font-size: 1.15rem; margin-bottom: 6px; }
 .puzzle-card p { font-size: 0.72rem; color: var(--ink-muted); margin-bottom: 14px; letter-spacing: 0.04em; }
+.puzzle-card .manage-note {
+  margin-bottom: 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
 .puzzle-card-footer {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -411,6 +419,7 @@ header span {
     top: 0;
     justify-content: flex-start;
   }
+
 }
 
 .solved-cat {
