@@ -33,6 +33,7 @@ const WRONG_GUESS_COOLDOWN_MS = 900;
 const OWNER_TOKEN_STORAGE_KEY = 'connections_owner_token';
 const ADMIN_KEY_STORAGE_KEY = 'connections_admin_key';
 let isAdminVerified = false;
+let pendingAdminVerification = false;
 
 // --- UTILITY FUNCTIONS ---
 
@@ -121,14 +122,15 @@ function enableAdminAccess(adminKeyInput) {
 
   setAdminKey(adminKey);
   isAdminVerified = false;
+  pendingAdminVerification = true;
   updateAccessStatus();
-  showToast('Admin access saved.');
   initializeApp();
 }
 
 function disableAdminAccess() {
   setAdminKey('');
   isAdminVerified = false;
+  pendingAdminVerification = false;
   updateAccessStatus();
   showToast('Admin access cleared.');
   initializeApp();
@@ -141,6 +143,7 @@ function consumeAdminKeyFromUrl() {
 
   setAdminKey(adminKeyFromUrl.trim());
   isAdminVerified = false;
+  pendingAdminVerification = true;
   url.searchParams.delete('admin');
   window.history.replaceState({}, '', url.toString());
 }
@@ -251,19 +254,16 @@ function renderGallery() {
     const p = entry.puzzle;
     const originalIndex = entry.index;
     const isSolved = solvedList.includes(p.id);
-    const canManage = Boolean(p.canManage);
-    const managementHTML = canManage
-      ? `
-          <button class="puzzle-action danger" onclick="deletePuzzle(${originalIndex})">Delete</button>
-          <button class="puzzle-action secondary" onclick="editPuzzle(${originalIndex})">Edit</button>
-        `
-      : `<div class="manage-note">Only the creator or admin can edit</div>`;
+    const canManage = Boolean(p.canManage || isAdminVerified);
+    const managementHTML = `
+      <button class="puzzle-action danger" onclick="deletePuzzle(${originalIndex})">Delete</button>
+      <button class="puzzle-action secondary" onclick="editPuzzle(${originalIndex})">Edit</button>
+    `;
     
     htmlResult += `
       <div class="puzzle-card ${isSolved ? 'solved-state' : ''}">
         <h3>${isSolved ? '✅ ' : ''}${esc(p.title)}</h3>
         <p>by ${esc(p.author || 'Anonymous')}</p>
-        ${!canManage ? managementHTML : ''}
         <div class="puzzle-card-footer">
           ${canManage ? managementHTML : ''}
           <button class="puzzle-action primary" onclick="playPuzzle(${originalIndex})">
@@ -524,6 +524,10 @@ async function fetchRemotePuzzles() {
   const data = await response.json();
   puzzles = Array.isArray(data.puzzles) ? data.puzzles : [];
   isAdminVerified = Boolean(data.isAdmin);
+  if (pendingAdminVerification) {
+    showToast(isAdminVerified ? 'Admin access verified.' : 'Admin key was not accepted by the server.');
+    pendingAdminVerification = false;
+  }
   setConnectionStatus('online');
   updateAccessStatus();
 }
@@ -1388,6 +1392,7 @@ async function initializeApp() {
   } catch (error) {
     console.error(error);
     isAdminVerified = false;
+    pendingAdminVerification = false;
     setConnectionStatus('offline');
     updateAccessStatus();
     showToast("Couldn't load online puzzles.");
