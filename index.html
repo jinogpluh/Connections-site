@@ -52,13 +52,12 @@
   <div id="connection-status" class="connection-status connecting">Connecting</div>
 </header>
 
-<div class="tabs">
-  <button class="tab active" id="tab-browse" onclick="switchTab('browse')">Browse</button>
-  <button class="tab" id="tab-create" onclick="switchTab('create')">Create</button>
-</div>
-
-<div id="browse-view" class="view active">
-  <div class="browse-toolbar">
+<div class="top-controls">
+  <div class="tabs">
+    <button class="tab active" id="tab-browse" onclick="switchTab('browse')">Browse</button>
+    <button class="tab" id="tab-create" onclick="switchTab('create')">Create</button>
+  </div>
+  <div class="browse-toolbar" id="browse-toolbar">
     <label for="sort-puzzles">Sort by</label>
     <select id="sort-puzzles" onchange="setPuzzleSort(this.value)">
       <option value="date_desc">Date Created (Newest)</option>
@@ -66,6 +65,9 @@
       <option value="author_asc">Author (A-Z)</option>
     </select>
   </div>
+</div>
+
+<div id="browse-view" class="view active">
   <div id="gallery-container"></div>
 </div>
 

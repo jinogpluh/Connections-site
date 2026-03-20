@@ -29,6 +29,7 @@ let puzzleIndexToEdit = null;
 const SHARED_PUZZLE_PARAM = 'puzzle';
 let connectionStatus = 'connecting';
 let currentPuzzleSort = 'date_desc';
+const WRONG_GUESS_COOLDOWN_MS = 900;
 
 // --- UTILITY FUNCTIONS ---
 
@@ -70,12 +71,15 @@ function setConnectionStatus(status) {
 
 // --- NAVIGATION ---
 function switchTab(tabName) {
+  const browseToolbar = document.getElementById('browse-toolbar');
+
   // Hide or show the correct views based on the tab clicked
   document.getElementById('tab-browse').classList.toggle('active', tabName === 'browse');
   document.getElementById('tab-create').classList.toggle('active', tabName === 'create');
   
   document.getElementById('browse-view').classList.toggle('active', tabName === 'browse');
   document.getElementById('create-view').classList.toggle('active', tabName === 'create');
+  if (browseToolbar) browseToolbar.classList.toggle('hidden', tabName !== 'browse');
   
   // Always hide the game when switching tabs
   document.getElementById('game-view').classList.remove('active');
@@ -458,7 +462,10 @@ function playPuzzle(index) {
     words: allWords, 
     selected: [], 
     solved: [], 
-    mistakes: 0 
+    mistakes: 0,
+    feedbackMessage: '',
+    feedbackKind: '',
+    isGuessLocked: false
   };
 
   document.getElementById('browse-view').classList.remove('active');
@@ -481,8 +488,9 @@ function renderGame() {
 
   const tilesHTML = remaining.map(w => {
     const isSelected = s.selected.includes(w.word);
+    const isLockedWrongSelection = isSelected && s.feedbackKind !== 'correct' && s.isGuessLocked;
     return `
-      <div class="word-tile ${isSelected ? 'selected' : ''}" 
+      <div class="word-tile ${isSelected ? 'selected' : ''} ${isLockedWrongSelection ? 'wrong-guess' : ''}" 
            onclick="toggleWord('${w.word.replace(/'/g, "\\'")}')">
         ${esc(w.word)}
       </div>
@@ -495,9 +503,9 @@ function renderGame() {
     <div id="solved-rows-container">${solvedHTML}</div> 
     <div class="word-grid">${tilesHTML}</div>
     <div class="game-actions" style="text-align:center; margin-top:20px;">
-        <button class="btn-game submit" onclick="submitGuess()">Submit Guess</button>
+        <button class="btn-game submit" onclick="submitGuess()" ${s.isGuessLocked ? 'disabled' : ''}>${s.isGuessLocked ? 'Try Again...' : 'Submit Guess'}</button>
     </div>
-    <div id="msg" style="text-align:center; margin-top:10px; min-height:20px;"></div>
+    <div id="msg" style="text-align:center; margin-top:10px; min-height:20px;">${s.feedbackKind === 'one-away' ? '<span class="one-away">One away...</span>' : esc(s.feedbackMessage || '')}</div>
   `;
 }
 
@@ -1027,9 +1035,11 @@ function firstArray() {
 
 function toggleWord(word) {
   const s = gameState;
+  if (!s || s.isGuessLocked) return;
   
   // Clear the feedback message as soon as the user starts changing their selection
-  document.getElementById('msg').innerHTML = "";
+  s.feedbackMessage = '';
+  s.feedbackKind = '';
 
   if (s.selected.includes(word)) {
     s.selected = s.selected.filter(w => w !== word);
@@ -1045,7 +1055,7 @@ function toggleWord(word) {
 
 function submitGuess() {
   const s = gameState;
-  const msgEl = document.getElementById('msg');
+  if (!s || s.isGuessLocked) return;
   
   if (s.selected.length !== 4) {
     showToast("Select 4 words first!");
@@ -1071,7 +1081,8 @@ function submitGuess() {
     const correctCatIndex = selectedIndices[0];
     s.solved.push(correctCatIndex);
     s.selected = [];
-    msgEl.innerHTML = "Correct!";
+    s.feedbackMessage = "Correct!";
+    s.feedbackKind = 'correct';
     
     if (s.solved.length === 4) {
       setTimeout(() => {
@@ -1081,11 +1092,14 @@ function submitGuess() {
   } else {
     // WRONG GUESS
     s.mistakes++;
+    s.isGuessLocked = true;
     
     if (maxInOneCat === 3) {
-        msgEl.innerHTML = '<span class="one-away">One away...</span>';
+        s.feedbackMessage = 'One away...';
+        s.feedbackKind = 'one-away';
     } else {
-        msgEl.innerHTML = "Not quite!";
+        s.feedbackMessage = "Not quite!";
+        s.feedbackKind = 'wrong';
     }
 
     if (s.mistakes >= 4) {
@@ -1098,6 +1112,14 @@ function submitGuess() {
           exitGame();
       }
     }
+
+    setTimeout(() => {
+      if (gameState !== s) return;
+      s.isGuessLocked = false;
+      s.feedbackMessage = '';
+      s.feedbackKind = '';
+      renderGame();
+    }, WRONG_GUESS_COOLDOWN_MS);
   }
   renderGame();
 }
@@ -1211,7 +1233,10 @@ function restartCurrentPuzzle() {
         words: allWords, 
         selected: [], 
         solved: [], 
-        mistakes: 0 
+        mistakes: 0,
+        feedbackMessage: '',
+        feedbackKind: '',
+        isGuessLocked: false
     };
     
     renderGame();
