@@ -262,14 +262,15 @@ header span {
 }
 
 #gallery-container {
-  max-width: 1420px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 40px;
 }
 
 .puzzle-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, 260px);
+  justify-content: center;
   gap: 24px;
 }
 
@@ -347,17 +348,17 @@ header span {
 
 @media (max-width: 1240px) {
   .puzzle-cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, 260px);
   }
 }
 
 @media (max-width: 920px) {
   #gallery-container {
-    padding: 0 8px;
+    padding: 0 20px;
   }
 
   .puzzle-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, 260px);
     gap: 18px;
   }
 }
