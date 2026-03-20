@@ -58,6 +58,14 @@
 </div>
 
 <div id="browse-view" class="view active">
+  <div class="browse-toolbar">
+    <label for="sort-puzzles">Sort by</label>
+    <select id="sort-puzzles" onchange="setPuzzleSort(this.value)">
+      <option value="date_desc">Date Created (Newest)</option>
+      <option value="date_asc">Date Created (Oldest)</option>
+      <option value="author_asc">Author (A-Z)</option>
+    </select>
+  </div>
   <div id="gallery-container"></div>
 </div>
 

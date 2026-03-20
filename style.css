@@ -191,6 +191,32 @@ header span {
 .view { display: none; }
 .view.active { display: block; }
 
+.browse-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.browse-toolbar label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.browse-toolbar select {
+  padding: 10px 12px;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+}
+
 .gallery-empty {
   text-align: center;
   padding: 80px 0;

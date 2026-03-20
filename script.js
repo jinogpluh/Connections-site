@@ -28,6 +28,7 @@ let puzzleIndexToDelete = null;
 let puzzleIndexToEdit = null;
 const SHARED_PUZZLE_PARAM = 'puzzle';
 let connectionStatus = 'connecting';
+let currentPuzzleSort = 'date_desc';
 
 // --- UTILITY FUNCTIONS ---
 
@@ -87,6 +88,36 @@ function switchTab(tabName) {
 }
 
 // --- GALLERY LOGIC ---
+function setPuzzleSort(sortValue) {
+  currentPuzzleSort = sortValue;
+  renderGallery();
+}
+
+function getSortedPuzzleEntries() {
+  const entries = puzzles.map((puzzle, index) => ({ puzzle, index }));
+
+  entries.sort((a, b) => {
+    if (currentPuzzleSort === 'author_asc') {
+      const authorA = (a.puzzle.author || 'Unkown').toLowerCase();
+      const authorB = (b.puzzle.author || 'Unkown').toLowerCase();
+      const authorComparison = authorA.localeCompare(authorB);
+      if (authorComparison !== 0) return authorComparison;
+      return (a.puzzle.title || '').localeCompare(b.puzzle.title || '');
+    }
+
+    const timeA = Date.parse(a.puzzle.createdAt || '') || 0;
+    const timeB = Date.parse(b.puzzle.createdAt || '') || 0;
+
+    if (currentPuzzleSort === 'date_asc') {
+      return timeA - timeB;
+    }
+
+    return timeB - timeA;
+  });
+
+  return entries;
+}
+
 function renderGallery() {
   const container = document.getElementById('gallery-container');
   const solvedListJSON = localStorage.getItem('solved_puzzle_ids');
@@ -102,10 +133,13 @@ function renderGallery() {
     return;
   }
 
+  const sortedEntries = getSortedPuzzleEntries();
   let htmlResult = '<div class="puzzle-cards">';
 
-  for (let i = 0; i < puzzles.length; i++) {
-    const p = puzzles[i];
+  for (let i = 0; i < sortedEntries.length; i++) {
+    const entry = sortedEntries[i];
+    const p = entry.puzzle;
+    const originalIndex = entry.index;
     const isSolved = solvedList.includes(p.id);
     
     htmlResult += `
@@ -113,9 +147,9 @@ function renderGallery() {
         <h3>${isSolved ? '✅ ' : ''}${esc(p.title)}</h3>
         <p>by ${esc(p.author || 'Anonymous')}</p>
         <div class="puzzle-card-footer">
-          <button class="puzzle-action danger" onclick="deletePuzzle(${i})">Delete</button>
-          <button class="puzzle-action secondary" onclick="editPuzzle(${i})">Edit</button>
-          <button class="puzzle-action primary" onclick="playPuzzle(${i})">
+          <button class="puzzle-action danger" onclick="deletePuzzle(${originalIndex})">Delete</button>
+          <button class="puzzle-action secondary" onclick="editPuzzle(${originalIndex})">Edit</button>
+          <button class="puzzle-action primary" onclick="playPuzzle(${originalIndex})">
               ${isSolved ? 'Replay' : 'Play'}
           </button>
         </div>
