@@ -272,7 +272,7 @@ header span {
   grid-template-columns: repeat(4, 272px);
   justify-content: center;
   gap: 24px;
-  margin-top: 14px;
+  margin-top: 64px;
 }
 
 .puzzle-card {

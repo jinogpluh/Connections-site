@@ -34,6 +34,96 @@ const OWNER_TOKEN_STORAGE_KEY = 'connections_owner_token';
 const ADMIN_KEY_STORAGE_KEY = 'connections_admin_key';
 let isAdminVerified = false;
 let pendingAdminVerification = false;
+const OFFLINE_DEMO_PUZZLES = [
+  {
+    id: 'offline_1',
+    title: 'Breakfast Table',
+    author: 'Local Demo',
+    categories: [
+      { name: 'Egg Dishes', words: ['OMELET', 'FRITTATA', 'QUICHE', 'SCRAMBLE'] },
+      { name: 'Coffee Orders', words: ['LATTE', 'MOCHA', 'CAPPUCCINO', 'AMERICANO'] },
+      { name: 'Fruit', words: ['BANANA', 'APPLE', 'GRAPE', 'PEAR'] },
+      { name: 'Toast Toppings', words: ['BUTTER', 'JAM', 'HONEY', 'AVOCADO'] }
+    ]
+  },
+  {
+    id: 'offline_2',
+    title: 'Movie Night',
+    author: 'Local Demo',
+    categories: [
+      { name: 'Snacks', words: ['POPCORN', 'PRETZEL', 'NACHOS', 'CANDY'] },
+      { name: 'Genres', words: ['COMEDY', 'DRAMA', 'HORROR', 'WESTERN'] },
+      { name: 'Tickets', words: ['STUB', 'AISLE', 'MATINEE', 'BALCONY'] },
+      { name: 'Streaming Verbs', words: ['PAUSE', 'REWIND', 'SKIP', 'BUFFER'] }
+    ]
+  },
+  {
+    id: 'offline_3',
+    title: 'City Walk',
+    author: 'Local Demo',
+    categories: [
+      { name: 'Transit', words: ['BUS', 'TRAM', 'SUBWAY', 'FERRY'] },
+      { name: 'Street Features', words: ['ALLEY', 'CROSSWALK', 'SIDEWALK', 'LAMPPOST'] },
+      { name: 'Shops', words: ['BAKERY', 'BOOKSTORE', 'FLORIST', 'PHARMACY'] },
+      { name: 'Carryables', words: ['TOTE', 'UMBRELLA', 'MAP', 'WALLET'] }
+    ]
+  },
+  {
+    id: 'offline_4',
+    title: 'Studio Session',
+    author: 'Local Demo',
+    categories: [
+      { name: 'Instruments', words: ['GUITAR', 'PIANO', 'DRUMS', 'BASS'] },
+      { name: 'Recording Terms', words: ['TRACK', 'MIX', 'TAKE', 'TEMPO'] },
+      { name: 'Audio Gear', words: ['MIC', 'AMP', 'MONITOR', 'CABLE'] },
+      { name: 'Song Parts', words: ['VERSE', 'CHORUS', 'BRIDGE', 'OUTRO'] }
+    ]
+  },
+  {
+    id: 'offline_5',
+    title: 'Garden Plot',
+    author: 'Local Demo',
+    categories: [
+      { name: 'Flowers', words: ['ROSE', 'TULIP', 'DAISY', 'LILY'] },
+      { name: 'Tools', words: ['TROWEL', 'RAKE', 'HOSE', 'SHEARS'] },
+      { name: 'Vegetables', words: ['CARROT', 'PEPPER', 'ONION', 'RADISH'] },
+      { name: 'Garden Verbs', words: ['PLANT', 'PRUNE', 'WATER', 'WEED'] }
+    ]
+  },
+  {
+    id: 'offline_6',
+    title: 'Desk Drawer',
+    author: 'Local Demo',
+    categories: [
+      { name: 'Stationery', words: ['PEN', 'MARKER', 'ERASER', 'RULER'] },
+      { name: 'Paper Goods', words: ['NOTEPAD', 'STICKY', 'ENVELOPE', 'INDEX'] },
+      { name: 'Fasteners', words: ['CLIP', 'STAPLE', 'TACK', 'BINDER'] },
+      { name: 'Desk Actions', words: ['FILE', 'STAMP', 'SIGN', 'SORT'] }
+    ]
+  },
+  {
+    id: 'offline_7',
+    title: 'Coastal Day',
+    author: 'Local Demo',
+    categories: [
+      { name: 'Beach Items', words: ['TOWEL', 'COOLER', 'SUNSCREEN', 'UMBRELLA'] },
+      { name: 'Water Sports', words: ['SURF', 'SAIL', 'PADDLE', 'DIVE'] },
+      { name: 'Sea Life', words: ['SEAL', 'CRAB', 'GULL', 'OTTER'] },
+      { name: 'Shore Words', words: ['DUNE', 'TIDE', 'PIER', 'COVE'] }
+    ]
+  },
+  {
+    id: 'offline_8',
+    title: 'Game Shelf',
+    author: 'Local Demo',
+    categories: [
+      { name: 'Board Games', words: ['CHESS', 'CLUE', 'RISK', 'SORRY'] },
+      { name: 'Card Terms', words: ['SHUFFLE', 'DEAL', 'DRAW', 'DISCARD'] },
+      { name: 'Pieces', words: ['TOKEN', 'PAWN', 'DIE', 'SPINNER'] },
+      { name: 'Win States', words: ['CHECKMATE', 'BINGO', 'VICTORY', 'JACKPOT'] }
+    ]
+  }
+];
 
 // --- UTILITY FUNCTIONS ---
 
@@ -58,6 +148,24 @@ function showToast(msg) {
 
 function setPuzzleLoadingState(isLoading) {
   isLoadingPuzzles = isLoading;
+}
+
+function getOfflineDemoPuzzles() {
+  return OFFLINE_DEMO_PUZZLES.map((puzzle, puzzleIndex) => ({
+    id: puzzle.id,
+    title: puzzle.title,
+    author: puzzle.author,
+    categories: puzzle.categories.map((category, index) => ({
+      key: CATEGORIES[index].key,
+      label: CATEGORIES[index].label,
+      color: CATEGORIES[index].color,
+      name: category.name,
+      words: category.words.slice()
+    })),
+    createdAt: new Date(Date.now() - puzzleIndex * 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - puzzleIndex * 86400000).toISOString(),
+    canManage: true
+  }));
 }
 
 function setConnectionStatus(status) {
@@ -1394,8 +1502,9 @@ async function initializeApp() {
     isAdminVerified = false;
     pendingAdminVerification = false;
     setConnectionStatus('offline');
+    puzzles = getOfflineDemoPuzzles();
     updateAccessStatus();
-    showToast("Couldn't load online puzzles.");
+    showToast("Offline mode: loaded 8 demo puzzles.");
   } finally {
     setPuzzleLoadingState(false);
     renderGallery();
