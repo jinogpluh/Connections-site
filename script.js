@@ -1368,19 +1368,23 @@ function submitGuess() {
 
 function fireConfetti() {
   const colors = ['#f9d71c', '#69b34c', '#4682b4', '#9370db', '#ff6347'];
+  const rows = 4;
   
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 90; i++) {
     const confetti = document.createElement('div');
     confetti.classList.add('confetti');
+    const rowIndex = i % rows;
     
     // Randomize appearance
     confetti.style.left = Math.random() * 100 + 'vw';
+    confetti.style.top = `${-10 - rowIndex * 55 - Math.random() * 25}px`;
     confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
     confetti.style.width = Math.random() * 8 + 5 + 'px';
     confetti.style.height = confetti.style.width;
+    confetti.style.setProperty('--drift-x', `${Math.random() * 90 - 45}px`);
     
     // Randomize timing
-    const duration = Math.random() * 2 + 2; // 2-4 seconds
+    const duration = Math.random() * 2 + 2.2; // 2.2-4.2 seconds
     confetti.style.animationDuration = duration + 's';
     confetti.style.opacity = Math.random();
     

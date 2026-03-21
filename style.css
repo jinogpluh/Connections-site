@@ -160,7 +160,7 @@ header span {
 
 @keyframes fall {
   to {
-    transform: translateY(100vh) rotate(720deg);
+    transform: translate(var(--drift-x, 0px), 100vh) rotate(720deg);
   }
 }
 
