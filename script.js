@@ -34,6 +34,10 @@ const OWNER_TOKEN_STORAGE_KEY = 'connections_owner_token';
 const ADMIN_KEY_STORAGE_KEY = 'connections_admin_key';
 let isAdminVerified = false;
 let pendingAdminVerification = false;
+let toastTimeoutId = null;
+let feedbackTimeoutId = null;
+const TOAST_DURATION_MS = 7000;
+const FEEDBACK_MESSAGE_DURATION_MS = 2600;
 const OFFLINE_DEMO_PUZZLES = [
   {
     id: 'offline_1',
@@ -137,13 +141,22 @@ function esc(str) {
 // Shows a temporary message at the bottom
 function showToast(msg) {
   const toastElement = document.getElementById('toast');
-  toastElement.textContent = msg; 
+  if (!toastElement) return;
+
+  if (toastTimeoutId !== null) {
+    clearTimeout(toastTimeoutId);
+  }
+
+  toastElement.classList.remove('show');
+  void toastElement.offsetWidth;
+  toastElement.textContent = msg;
   toastElement.classList.add('show');
   
-  // Wait 3 seconds, then hide it
-  setTimeout(function() {
+  // Keep the newest toast visible long enough, even if older toasts fired recently.
+  toastTimeoutId = setTimeout(function() {
     toastElement.classList.remove('show');
-  }, 3000);
+    toastTimeoutId = null;
+  }, TOAST_DURATION_MS);
 }
 
 function setPuzzleLoadingState(isLoading) {
@@ -219,6 +232,36 @@ function buildAuthHeaders() {
 
 function updateAccessStatus() {
   document.body.classList.toggle('admin-mode', isAdminVerified);
+}
+
+function clearFeedbackTimeout() {
+  if (feedbackTimeoutId !== null) {
+    clearTimeout(feedbackTimeoutId);
+    feedbackTimeoutId = null;
+  }
+}
+
+function scheduleFeedbackClear(state) {
+  clearFeedbackTimeout();
+  feedbackTimeoutId = setTimeout(function() {
+    if (gameState !== state) return;
+    state.feedbackMessage = '';
+    state.feedbackKind = '';
+    renderGame();
+    feedbackTimeoutId = null;
+  }, FEEDBACK_MESSAGE_DURATION_MS);
+}
+
+function syncGuessLockUI() {
+  const submitButton = document.querySelector('#game-container .btn-game.submit');
+  if (submitButton) {
+    submitButton.disabled = Boolean(gameState && gameState.isGuessLocked);
+    submitButton.textContent = gameState && gameState.isGuessLocked ? 'Try Again...' : 'Submit Guess';
+  }
+
+  document.querySelectorAll('#game-container .word-tile.wrong-guess').forEach(function(tile) {
+    tile.classList.remove('wrong-guess');
+  });
 }
 
 function enableAdminAccess(adminKeyInput) {
@@ -742,7 +785,7 @@ function renderGame() {
   // FIX: Use a stable structure. We wrap the tiles and solved categories separately.
   container.innerHTML = `
     <div id="msg">${s.feedbackKind === 'one-away' ? '<span class="one-away">One away...</span>' : esc(s.feedbackMessage || '')}</div>
-    <div class="mistakes-row">Mistakes: ${'●'.repeat(4 - s.mistakes)}${'○'.repeat(s.mistakes)}</div>
+    <div class="mistakes-row">Mistakes: ${'● '.repeat(4 - s.mistakes)}${'○'.repeat(s.mistakes)}</div>
     <div id="solved-rows-container">${solvedHTML}</div> 
     <div class="word-grid">${tilesHTML}</div>
     <div class="game-actions" style="text-align:center; margin-top:20px;">
@@ -1280,6 +1323,7 @@ function toggleWord(word) {
   if (!s || s.isGuessLocked) return;
   
   // Clear the feedback message as soon as the user starts changing their selection
+  clearFeedbackTimeout();
   s.feedbackMessage = '';
   s.feedbackKind = '';
 
@@ -1320,6 +1364,7 @@ function submitGuess() {
 
   if (maxInOneCat === 4) {
     // CORRECT GUESS
+    clearFeedbackTimeout();
     const correctCatIndex = selectedIndices[0];
     s.solved.push(correctCatIndex);
     s.selected = [];
@@ -1333,6 +1378,7 @@ function submitGuess() {
     }
   } else {
     // WRONG GUESS
+    clearFeedbackTimeout();
     s.mistakes++;
     s.isGuessLocked = true;
     
@@ -1355,12 +1401,11 @@ function submitGuess() {
       }
     }
 
+    scheduleFeedbackClear(s);
     setTimeout(() => {
       if (gameState !== s) return;
       s.isGuessLocked = false;
-      s.feedbackMessage = '';
-      s.feedbackKind = '';
-      renderGame();
+      syncGuessLockUI();
     }, WRONG_GUESS_COOLDOWN_MS);
   }
   renderGame();
@@ -1447,12 +1492,14 @@ function handleMistake(foundCategories) {
 }
 
 function closeWinModal() {
+    clearFeedbackTimeout();
     document.getElementById('win-modal').style.display = 'none';
     exitGame();
 }
 
 // Closes the loss modal and returns to the gallery
 function closeLossModal() {
+    clearFeedbackTimeout();
     const lossModal = document.getElementById('loss-modal');
     if (lossModal) lossModal.style.display = 'none';
     exitGame(); // Takes user back to the browse tab
@@ -1462,6 +1509,7 @@ function closeLossModal() {
 function restartCurrentPuzzle() {
     const lossModal = document.getElementById('loss-modal');
     if (lossModal) lossModal.style.display = 'none';
+    clearFeedbackTimeout();
     
     // Reset the game state but keep the same puzzle
     const currentPuzzle = gameState.puzzle;

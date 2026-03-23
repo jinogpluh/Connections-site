@@ -546,9 +546,20 @@ header span {
 .btn-game.submit { background: var(--ink); color: var(--bg); }
 .btn-game:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 20px; border-radius: 4px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 20px; border-radius: 4px; opacity: 0; transition: opacity 0.45s ease; z-index: 1000; pointer-events: none; }
 .toast.show { opacity: 1; }
-.back-btn { background: none; border: none; cursor: pointer; margin-bottom: 20px; color: var(--ink-muted); text-transform: uppercase; font-size: 0.7rem; }
+.back-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 24px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
 
 @media (max-width: 720px) {
   #game-view {
