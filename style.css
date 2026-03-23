@@ -474,6 +474,72 @@ header span {
   line-height: 1.45;
 }
 
+.game-layout {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.board-column {
+  min-width: 0;
+  width: 760px;
+  max-width: calc(100vw - 32px);
+}
+
+.hint-panel {
+  position: absolute;
+  left: calc(100% + 40px);
+  top: 20px;
+  width: 250px;
+  padding: 16px;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.btn-game.hint {
+  width: 100%;
+  margin-bottom: 10px;
+  background: #d8d1c3;
+  border-color: #b8b1a3;
+  color: var(--ink);
+}
+
+.hint-copy {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.hint-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  justify-items: center;
+}
+
+.hint-item {
+  display: block;
+}
+
+.hint-word {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
 .solved-cat.reveal {
   /* Only animate the category that was just solved */
   animation: solveReveal 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
@@ -564,6 +630,21 @@ header span {
 @media (max-width: 720px) {
   #game-view {
     max-width: 100%;
+  }
+
+  .game-layout {
+    width: 100%;
+  }
+
+  .board-column {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hint-panel {
+    position: static;
+    width: auto;
+    margin-top: 16px;
   }
 
   .mistakes-row {

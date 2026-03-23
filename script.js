@@ -750,7 +750,8 @@ function playPuzzle(index) {
     mistakes: 0,
     feedbackMessage: '',
     feedbackKind: '',
-    isGuessLocked: false
+    isGuessLocked: false,
+    hintsRevealed: false
   };
 
   document.getElementById('browse-view').classList.remove('active');
@@ -762,6 +763,11 @@ function renderGame() {
   const s = gameState;
   const container = document.getElementById('game-container');
   const remaining = s.words.filter(w => !s.solved.includes(w.catIndex));
+  const hintItemsHTML = s.puzzle.categories.map((category, index) => `
+    <div class="hint-item">
+      <span class="hint-word" style="background:${CATEGORIES[index].color}">${esc(category.words[0])}</span>
+    </div>
+  `).join('');
   
   // Create the solved rows
   const solvedHTML = s.solved.map(ci => `
@@ -786,12 +792,28 @@ function renderGame() {
   container.innerHTML = `
     <div id="msg">${s.feedbackKind === 'one-away' ? '<span class="one-away">One away...</span>' : esc(s.feedbackMessage || '')}</div>
     <div class="mistakes-row">Mistakes: ${'● '.repeat(4 - s.mistakes)}${'○'.repeat(s.mistakes)}</div>
-    <div id="solved-rows-container">${solvedHTML}</div> 
-    <div class="word-grid">${tilesHTML}</div>
+    <div class="game-layout">
+      <div class="board-column">
+        <div id="solved-rows-container">${solvedHTML}</div> 
+        <div class="word-grid">${tilesHTML}</div>
+      </div>
+      <aside class="hint-panel">
+        <button class="btn-game hint" onclick="showHints()" ${s.hintsRevealed ? 'disabled' : ''}>${s.hintsRevealed ? 'Hints Shown' : 'Show Hints'}</button>
+        ${s.hintsRevealed ? `<div class="hint-list">${hintItemsHTML}</div>` : ''}
+      </aside>
+    </div>
     <div class="game-actions" style="text-align:center; margin-top:20px;">
         <button class="btn-game submit" onclick="submitGuess()" ${s.isGuessLocked ? 'disabled' : ''}>${s.isGuessLocked ? 'Try Again...' : 'Submit Guess'}</button>
     </div>
   `;
+}
+
+function showHints() {
+  const s = gameState;
+  if (!s || s.hintsRevealed) return;
+
+  s.hintsRevealed = true;
+  renderGame();
 }
 
 async function importFromSwellgarfo() {
@@ -1531,7 +1553,8 @@ function restartCurrentPuzzle() {
         mistakes: 0,
         feedbackMessage: '',
         feedbackKind: '',
-        isGuessLocked: false
+        isGuessLocked: false,
+        hintsRevealed: false
     };
     
     renderGame();
