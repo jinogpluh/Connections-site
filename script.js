@@ -1396,7 +1396,7 @@ function submitGuess() {
     if (s.solved.length === 4) {
       setTimeout(() => {
           handleWin(s.puzzle.id);
-      }, 500);
+      }, 250);
     }
   } else {
     // WRONG GUESS
@@ -1480,7 +1480,7 @@ function handleWin(puzzleId) {
   setTimeout(function() {
     const winModal = document.getElementById('win-modal');
     if (winModal) winModal.style.display = 'flex';
-  }, 700);
+  }, 350);
 }
 
 function handleMistake(foundCategories) {
@@ -1517,6 +1517,11 @@ function closeWinModal() {
     clearFeedbackTimeout();
     document.getElementById('win-modal').style.display = 'none';
     exitGame();
+}
+
+function admirePuzzle() {
+    const winModal = document.getElementById('win-modal');
+    if (winModal) winModal.style.display = 'none';
 }
 
 // Closes the loss modal and returns to the gallery
